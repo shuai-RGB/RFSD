@@ -5,13 +5,14 @@ RFSD is a text-attributed graph recommendation model that jointly exploits user/
 ## Framework
 
 
-
 ## Requirements
 
 - Python 3.8+
 - PyTorch
 - NumPy
 - SciPy
+
+`requirements.txt` is generated from the third-party imports used by `rfsd/*.py`.
 
 Install the dependencies with:
 
@@ -55,37 +56,16 @@ The current training pipeline reads `usr_emb_np.pkl` and `itm_emb_np.pkl` direct
 
 ## Training
 
-Run RFSD from the repository root:
 
 ```bash
-# Amazon-Book
-python main.py --data amazon
-
-# Yelp
+cd rfsd
 python main.py --data yelp
-
-# Steam
-python main.py --data steam
 ```
 
 ## Best hyperparameters
 
 The best parameters for all datasets are stored in [`rfsd/best_params.yaml`](rfsd/best_params.yaml). Selecting `--data` automatically loads the corresponding section. New datasets can be added by inserting another top-level section containing at least `data_dir`.
 
-```yaml
-yelp:
-  data_dir: data/yelp
-  learning_rate: 1e-4
-  num_negatives: 20
-  user_top_k: 40
-  item_top_k: 60
-```
-
-View every available command-line override with:
-
-```bash
-python main.py --help
-```
 
 ## Evaluation
 
@@ -98,4 +78,25 @@ RFSD reports the following top-*k* ranking metrics after each epoch:
 
 Training interactions and validation interactions are masked before test ranking.
 
+## Project structure
 
+```text
+.
+├── requirements.txt
+├── rfsd/
+│   ├── main.py                # configuration, YAML loading, and CLI
+│   ├── best_params.yaml       # dataset-specific best hyperparameters
+│   ├── data.py                # data loading and graph construction
+│   ├── model.py               # RFSD model and neural components
+│   ├── evaluation.py          # objectives and ranking metrics
+│   ├── trainer.py             # training, validation, and early stopping
+│   └── utils.py               # sparse-matrix and graph utilities
+└── data/                      # local datasets (not committed)
+```
+
+## Reproducibility
+
+- The default random seed is `42`; override it with `--seed`.
+- Dataset-specific settings are versioned in `rfsd/best_params.yaml`.
+- Use the same interaction splits and text embeddings when comparing results.
+- Enable validation-based early stopping with `--early-stop` when required.

@@ -63,7 +63,7 @@ Run RFSD on a specific dataset:
 ```bash
 cd rfsd
 python main.py --data <dataset>
-
+```
 ## Best hyperparameters
 
 The best parameters for all datasets are stored in [`rfsd/best_params.yaml`](rfsd/best_params.yaml). Selecting `--data` automatically loads the corresponding section. New datasets can be added by inserting another top-level section containing at least `data_dir`.

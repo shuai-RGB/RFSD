@@ -13,74 +13,7 @@ RFSD is a text-attributed graph recommendation model that jointly exploits user/
 
 ## Framework
 
-```mermaid
-flowchart LR
-    subgraph INPUT["Text-attributed recommendation data"]
-        UP["User profiles"]
-        IP["Item profiles"]
-        UTE["User text embeddings"]
-        ITE["Item text embeddings"]
-        UID["User ID embeddings"]
-        IID["Item ID embeddings"]
-        R["User-item interactions"]
-    end
 
-    subgraph GRAPH["Multi-view graph construction"]
-        US["User text-similarity graph"]
-        IS["Item text-similarity graph"]
-        UC["User Jaccard co-occurrence graph"]
-        IC["Item Jaccard co-occurrence graph"]
-    end
-
-    subgraph HOMO["Homogeneous graph encoding"]
-        UH["User graph encoder"]
-        IH["Item graph encoder"]
-    end
-
-    subgraph CLUSTER["Soft cluster discovery"]
-        LF["Learnable cluster features"]
-        PH["Projection head"]
-        GS["Gumbel-Softmax memberships"]
-    end
-
-    subgraph PROP["Cluster-aware interaction propagation"]
-        CP["Cluster-conditioned user-item messages"]
-        LA["Layer aggregation"]
-        GF["Gated ID-text fusion"]
-    end
-
-    subgraph LEARN["Prediction and learning"]
-        SCORE["User-item scores"]
-        BPR["Adaptive hard-negative BPR"]
-        CL["ID-text contrastive loss"]
-        OBJ["Joint objective"]
-    end
-
-    UP --> UTE
-    IP --> ITE
-    UTE --> US
-    ITE --> IS
-    R --> UC
-    R --> IC
-    UTE --> UH
-    UID --> UH
-    US --> UH
-    UC --> UH
-    ITE --> IH
-    IID --> IH
-    IS --> IH
-    IC --> IH
-    LF --> PH --> GS
-    UH --> CP
-    IH --> CP
-    R --> CP
-    GS --> CP
-    CP --> LA --> GF --> SCORE
-    SCORE --> BPR --> OBJ
-    GF --> CL --> OBJ
-```
-
-<p align="center"><b>Figure 1. Overview of the RFSD framework.</b></p>
 
 ## Requirements
 
@@ -144,27 +77,6 @@ python main.py --data yelp
 python main.py --data steam
 ```
 
-Amazon-Book is the default dataset, so the following is equivalent to `--data amazon`:
-
-```bash
-python main.py
-```
-
-The entry point can also be executed from inside `rfsd/`, or as a Python module:
-
-```bash
-python -m rfsd --data yelp
-```
-
-To select a GPU or override a preset value:
-
-```bash
-python main.py --data yelp --device cuda:0
-python main.py --data steam --lr 1e-3 --early-stop
-```
-
-Explicit command-line arguments take precedence over the values loaded from YAML.
-
 ## Best hyperparameters
 
 The best parameters for all datasets are stored in [`rfsd/best_params.yaml`](rfsd/best_params.yaml). Selecting `--data` automatically loads the corresponding section. New datasets can be added by inserting another top-level section containing at least `data_dir`.
@@ -195,32 +107,4 @@ RFSD reports the following top-*k* ranking metrics after each epoch:
 
 Training interactions and validation interactions are masked before test ranking.
 
-## Project structure
 
-```text
-.
-├── main.py                    # compatibility command-line entry
-├── requirements.txt
-├── rfsd/
-│   ├── main.py                # configuration, YAML loading, and CLI
-│   ├── best_params.yaml       # dataset-specific best hyperparameters
-│   ├── data.py                # data loading and graph construction
-│   ├── model.py               # RFSD model and neural components
-│   ├── evaluation.py          # objectives and ranking metrics
-│   ├── trainer.py             # training, validation, and early stopping
-│   └── utils.py               # sparse-matrix and graph utilities
-└── data/                      # local datasets (not committed)
-```
-
-The root-level `model.py`, `train.py`, `dataset.py`, `evaluation.py`, and `utilis.py` are compatibility modules for earlier imports. New code should import from `rfsd` directly.
-
-## Reproducibility
-
-- The default random seed is `42`; override it with `--seed`.
-- Dataset-specific settings are versioned in `rfsd/best_params.yaml`.
-- Use the same interaction splits and text embeddings when comparing results.
-- Enable validation-based early stopping with `--early-stop` when required.
-
-## Citation
-
-Citation information will be added when the RFSD paper is publicly available.

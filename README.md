@@ -58,11 +58,11 @@ The current training pipeline reads `usr_emb_np.pkl` and `itm_emb_np.pkl` direct
 
 ## Training
 
+Run RFSD on a specific dataset:
 
 ```bash
 cd rfsd
-python main.py --data yelp
-```
+python main.py --data <dataset>
 
 ## Best hyperparameters
 

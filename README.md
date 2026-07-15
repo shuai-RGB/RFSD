@@ -3,7 +3,7 @@
 RFSD is a text-attributed graph recommendation model that jointly exploits user/item IDs, profile-derived text representations, homogeneous graphs, and soft cluster-aware interaction propagation. The implementation supports **Amazon-Book**, **Yelp**, and **Steam**, with dataset-specific best hyperparameters loaded automatically from YAML.
 
 ## Framework
-[📄 View the paper](./freamwork.pdf)
+[📄 View the paper](./framework.pdf)
 
 ## Requirements
 

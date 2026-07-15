@@ -4,7 +4,7 @@ RFSD is a text-attributed graph recommendation model that jointly exploits user/
 
 ## Framework
 <p align="center">
-  <img src="./framework.png" width="900">
+  <img src="./framework.jpg" width="900">
 </p>
 
 ## Requirements

@@ -93,10 +93,3 @@ Training interactions and validation interactions are masked before test ranking
 │   └── utils.py               # sparse-matrix and graph utilities
 └── data/                      # local datasets (not committed)
 ```
-
-## Reproducibility
-
-- The default random seed is `42`; override it with `--seed`.
-- Dataset-specific settings are versioned in `rfsd/best_params.yaml`.
-- Use the same interaction splits and text embeddings when comparing results.
-- Enable validation-based early stopping with `--early-stop` when required.

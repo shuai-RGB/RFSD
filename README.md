@@ -1,373 +1,226 @@
-# RFSD: Robust Graph Recommendation via Relation Filtering and Semantic Disentanglement
+# RFSD
 
-<p align="center">
-  <b>Official PyTorch Implementation of RFSD</b>
-</p>
-
-<p align="center">
-  <a href="#requirements">Requirements</a> |
-  <a href="#data-preparation">Data</a> |
-  <a href="#training">Training</a> |
-  <a href="#evaluation">Evaluation</a> |
-  <a href="#citation">Citation</a>
-</p>
-
-## Introduction
-
-This repository provides the official implementation of:
-
-> **Robust Graph Recommendation via Relation Filtering and Semantic Disentanglement**
-
-RFSD is a robust graph representation learning framework for recommendation.
-It is designed to address two major problems in graph-based recommender
-systems:
-
-1. Unreliable user-user and item-item homogeneous relations.
-2. Irrelevant and noisy high-order information propagation over the
-   user-item interaction graph.
-
-RFSD consists of three main components:
-
-- **Robust Homogeneous Graph Learning**
-- **Semantically Disentangled Message Passing**
-- **Semantic Refinement and Optimization**
-
-## Framework
-
-<p align="center">
-  <img src="assets/framework.png" width="95%" alt="RFSD Framework">
-</p>
-
-<p align="center">
-  Overview of the proposed RFSD framework.
-</p>
+RFSD is a text-attributed graph recommendation model that jointly exploits user/item IDs, profile-derived text representations, homogeneous graphs, and soft cluster-aware interaction propagation. The implementation supports **Amazon-Book**, **Yelp**, and **Steam**, with dataset-specific best hyperparameters loaded automatically from YAML.
 
 ## Highlights
 
-- We construct robust user-user and item-item homogeneous graphs through
-  reciprocal neighbor filtering.
-- We induce multiple semantic subspaces from the global structures of
-  user-side and item-side semantic graphs.
-- We perform subspace-specific message propagation to suppress mismatched
-  high-order neighborhood information.
-- We introduce cross-modal alignment and adaptive semantic gating to
-  extract recommendation-relevant semantic information.
-- RFSD achieves consistent improvements on Amazon-book, Yelp, and Steam.
+- Fuses text-similarity and interaction-based co-occurrence graphs with learnable weights.
+- Propagates ID and text features on user-user and item-item homogeneous graphs.
+- Learns soft user/item cluster assignments through a projection head and Gumbel-Softmax.
+- Performs cluster-aware message passing on the user-item interaction graph.
+- Aligns ID and text views with contrastive learning and optimizes an adaptive hard-negative BPR objective.
+- Provides one-command dataset presets through `--data amazon|yelp|steam`.
 
-## Repository Structure
+## Framework
 
-```text
-RFSD/
-├── assets/                 # Figures used in README
-├── configs/                # Dataset-specific configurations
-├── data/                   # Dataset directory
-├── preprocessing/          # Data and graph preprocessing
-├── scripts/                # Training and evaluation scripts
-├── src/                    # Source code
-├── main.py                 # Main entry
-├── requirements.txt
-└── README.md
+```mermaid
+flowchart LR
+    subgraph INPUT["Text-attributed recommendation data"]
+        UP["User profiles"]
+        IP["Item profiles"]
+        UTE["User text embeddings"]
+        ITE["Item text embeddings"]
+        UID["User ID embeddings"]
+        IID["Item ID embeddings"]
+        R["User-item interactions"]
+    end
+
+    subgraph GRAPH["Multi-view graph construction"]
+        US["User text-similarity graph"]
+        IS["Item text-similarity graph"]
+        UC["User Jaccard co-occurrence graph"]
+        IC["Item Jaccard co-occurrence graph"]
+    end
+
+    subgraph HOMO["Homogeneous graph encoding"]
+        UH["User graph encoder"]
+        IH["Item graph encoder"]
+    end
+
+    subgraph CLUSTER["Soft cluster discovery"]
+        LF["Learnable cluster features"]
+        PH["Projection head"]
+        GS["Gumbel-Softmax memberships"]
+    end
+
+    subgraph PROP["Cluster-aware interaction propagation"]
+        CP["Cluster-conditioned user-item messages"]
+        LA["Layer aggregation"]
+        GF["Gated ID-text fusion"]
+    end
+
+    subgraph LEARN["Prediction and learning"]
+        SCORE["User-item scores"]
+        BPR["Adaptive hard-negative BPR"]
+        CL["ID-text contrastive loss"]
+        OBJ["Joint objective"]
+    end
+
+    UP --> UTE
+    IP --> ITE
+    UTE --> US
+    ITE --> IS
+    R --> UC
+    R --> IC
+    UTE --> UH
+    UID --> UH
+    US --> UH
+    UC --> UH
+    ITE --> IH
+    IID --> IH
+    IS --> IH
+    IC --> IH
+    LF --> PH --> GS
+    UH --> CP
+    IH --> CP
+    R --> CP
+    GS --> CP
+    CP --> LA --> GF --> SCORE
+    SCORE --> BPR --> OBJ
+    GF --> CL --> OBJ
 ```
+
+<p align="center"><b>Figure 1. Overview of the RFSD framework.</b></p>
 
 ## Requirements
 
-The code has been tested with the following environment:
-
-- Python 3.10
-- PyTorch 2.x
-- CUDA 11.8 or later
+- Python 3.8+
+- PyTorch
 - NumPy
 - SciPy
-- scikit-learn
-- PyYAML
-- tqdm
 
-### Option 1: Conda
+Install the dependencies with:
 
 ```bash
-conda create -n rfsd python=3.10 -y
-conda activate rfsd
 pip install -r requirements.txt
 ```
 
-### Option 2: Environment File
+## Text-attributed recommendation datasets
 
-```bash
-conda env create -f environment.yml
-conda activate rfsd
-```
+We evaluate RFSD on three public recommendation datasets: **Amazon-Book**, **Yelp**, and **Steam**. Each user and item is associated with a generated textual profile. Every dataset contains training, validation, and test interactions; the validation split can be used for early stopping.
 
-To verify the installation:
+Download the prepared data from [Google Drive](https://drive.google.com/file/d/1PzePFsBcYofG1MV2FisFLBM2lMytbMdW/view), extract it, and place the dataset directories under `data/`.
 
-```bash
-python -c "import torch; print(torch.__version__)"
-python -c "import torch; print(torch.cuda.is_available())"
-```
+Dataset statistics used by the current repository are:
 
-## Data Preparation
+| Dataset     |  Users |  Items | Train interactions | Validation interactions | Test interactions |
+| ----------- | -----: | -----: | -----------------: | ----------------------: | ----------------: |
+| Amazon-Book | 11,000 |  9,332 |            120,464 |                  40,290 |            40,106 |
+| Yelp        | 11,091 | 11,010 |            166,620 |                  55,479 |            55,436 |
+| Steam       | 23,310 |  5,237 |            316,190 |                 104,897 |           104,835 |
 
-We conduct experiments on three public recommendation datasets:
-
-- Amazon-book
-- Yelp
-- Steam
-
-Place the processed datasets in the following directory:
+The downloaded/raw data and generated embeddings follow this layout:
 
 ```text
 data/
-├── amazon_book/
-│   ├── train.txt
-│   ├── valid.txt
-│   ├── test.txt
-│   ├── user_semantic_embeddings.npy
-│   └── item_semantic_embeddings.npy
+├── amazon/
+│   ├── trn_mat.pkl       # training interactions (SciPy sparse matrix)
+│   ├── val_mat.pkl       # validation interactions (SciPy sparse matrix)
+│   ├── tst_mat.pkl       # test interactions (SciPy sparse matrix)
+│   ├── usr_prf.pkl       # user text profiles (raw/preprocessing input)
+│   ├── itm_prf.pkl       # item text profiles (raw/preprocessing input)
+│   ├── usr_emb_np.pkl    # user text embeddings used by RFSD
+│   └── itm_emb_np.pkl    # item text embeddings used by RFSD
 ├── yelp/
-│   ├── train.txt
-│   ├── valid.txt
-│   ├── test.txt
-│   ├── user_semantic_embeddings.npy
-│   └── item_semantic_embeddings.npy
+│   └── ...
 └── steam/
-    ├── train.txt
-    ├── valid.txt
-    ├── test.txt
-    ├── user_semantic_embeddings.npy
-    └── item_semantic_embeddings.npy
+    └── ...
 ```
 
-More details about dataset preprocessing are provided in
-[`data/README.md`](data/README.md).
-
-## Semantic Profile Preparation
-
-RFSD uses textual side information to construct semantic representations
-for users and items.
-
-The semantic preprocessing pipeline contains the following steps:
-
-1. Construct user and item textual inputs.
-2. Generate recommendation-oriented textual profiles.
-3. Encode textual profiles into dense semantic embeddings.
-4. Construct user-side and item-side semantic graphs.
-5. Perform reciprocal-neighbor relation filtering.
-6. Compute spectral representations of semantic graphs.
-
-Example preprocessing command:
-
-```bash
-python preprocessing/build_profiles.py \
-    --dataset amazon_book \
-    --data_path data/amazon_book
-```
-
-Construct semantic and co-occurrence graphs:
-
-```bash
-python preprocessing/build_semantic_graph.py \
-    --dataset amazon_book \
-    --config configs/amazon_book.yaml
-```
-
-```bash
-python preprocessing/build_cooccurrence_graph.py \
-    --dataset amazon_book \
-    --config configs/amazon_book.yaml
-```
-
-Perform spectral decomposition:
-
-```bash
-python preprocessing/spectral_decomposition.py \
-    --dataset amazon_book \
-    --config configs/amazon_book.yaml
-```
-
-> Note: Do not upload API keys or private credentials to GitHub. Use
-> environment variables or a local `.env` file, and add `.env` to
-> `.gitignore`.
+The current training pipeline reads `usr_emb_np.pkl` and `itm_emb_np.pkl` directly. A forthcoming `read_profile.py` will read `usr_prf.pkl` and `itm_prf.pkl` and prepare the text embeddings. Until that script is added, make sure the two embedding files are present in each dataset directory.
 
 ## Training
 
-### Train on Amazon-book
+Run RFSD from the repository root:
 
 ```bash
-python main.py \
-    --config configs/amazon_book.yaml \
-    --mode train
+# Amazon-Book
+python main.py --data amazon
+
+# Yelp
+python main.py --data yelp
+
+# Steam
+python main.py --data steam
 ```
 
-Alternatively:
+Amazon-Book is the default dataset, so the following is equivalent to `--data amazon`:
 
 ```bash
-bash scripts/run_amazon_book.sh
+python main.py
 ```
 
-### Train on Yelp
+The entry point can also be executed from inside `rfsd/`, or as a Python module:
 
 ```bash
-python main.py \
-    --config configs/yelp.yaml \
-    --mode train
+python -m rfsd --data yelp
 ```
 
-Alternatively:
+To select a GPU or override a preset value:
 
 ```bash
-bash scripts/run_yelp.sh
+python main.py --data yelp --device cuda:0
+python main.py --data steam --lr 1e-3 --early-stop
 ```
 
-### Train on Steam
+Explicit command-line arguments take precedence over the values loaded from YAML.
 
-```bash
-python main.py \
-    --config configs/steam.yaml \
-    --mode train
+## Best hyperparameters
+
+The best parameters for all datasets are stored in [`rfsd/best_params.yaml`](rfsd/best_params.yaml). Selecting `--data` automatically loads the corresponding section. New datasets can be added by inserting another top-level section containing at least `data_dir`.
+
+```yaml
+yelp:
+  data_dir: data/yelp
+  learning_rate: 1e-4
+  num_negatives: 20
+  user_top_k: 40
+  item_top_k: 60
 ```
 
-Alternatively:
+View every available command-line override with:
 
 ```bash
-bash scripts/run_steam.sh
+python main.py --help
 ```
 
 ## Evaluation
 
-Evaluate a trained checkpoint:
+RFSD reports the following top-*k* ranking metrics after each epoch:
 
-```bash
-python main.py \
-    --config configs/amazon_book.yaml \
-    --mode test \
-    --checkpoint checkpoints/amazon_book/best_model.pt
+- NDCG@*k*
+- Recall@*k*
+- Hit Rate@*k*
+- MAP@*k*
+
+Training interactions and validation interactions are masked before test ranking.
+
+## Project structure
+
+```text
+.
+├── main.py                    # compatibility command-line entry
+├── requirements.txt
+├── rfsd/
+│   ├── main.py                # configuration, YAML loading, and CLI
+│   ├── best_params.yaml       # dataset-specific best hyperparameters
+│   ├── data.py                # data loading and graph construction
+│   ├── model.py               # RFSD model and neural components
+│   ├── evaluation.py          # objectives and ranking metrics
+│   ├── trainer.py             # training, validation, and early stopping
+│   └── utils.py               # sparse-matrix and graph utilities
+└── data/                      # local datasets (not committed)
 ```
 
-The evaluation reports the following full-ranking metrics:
-
-- Hit Rate: HR@5, HR@10, HR@20
-- Recall: Recall@5, Recall@10, Recall@20
-- NDCG: NDCG@5, NDCG@10, NDCG@20
-- MAP: MAP@5, MAP@10, MAP@20
-
-## Configuration
-
-An example configuration is shown below:
-
-```yaml
-dataset: amazon_book
-data_path: data/amazon_book
-
-model:
-  name: RFSD
-  embedding_dim: 256
-  num_subspaces: 2
-  user_neighbors: 80
-  item_neighbors: 10
-  user_homogeneous_layers: 3
-  item_homogeneous_layers: 1
-
-training:
-  optimizer: adam
-  learning_rate: 0.0002
-  epochs: 2000
-  early_stop_patience: 50
-  batch_size: 2048
-  seed: 2026
-
-loss:
-  regularization_weight: 0.0001
-  contrastive_weight: 0.1
-  clustering_temperature: 1.0
-  alignment_temperature: 0.1
-```
-
-Dataset-specific configurations are stored in the `configs/` directory.
-
-## Main Results
-
-RFSD is evaluated on Amazon-book, Yelp, and Steam under the full-ranking
-evaluation protocol.
-
-| Dataset | HR@20 | Recall@20 | NDCG@20 | MAP@20 |
-|---|---:|---:|---:|---:|
-| Amazon-book | 0.4543 | 0.2042 | 0.1394 | 0.0798 |
-| Yelp | 0.4413 | 0.1445 | 0.0933 | 0.0414 |
-| Steam | 0.4408 | 0.1551 | 0.1004 | 0.0475 |
-
-The reported results are averaged over five independent runs with
-different random seeds.
+The root-level `model.py`, `train.py`, `dataset.py`, `evaluation.py`, and `utilis.py` are compatibility modules for earlier imports. New code should import from `rfsd` directly.
 
 ## Reproducibility
 
-For reproducible experiments, we recommend explicitly specifying the
-random seed:
-
-```bash
-python main.py \
-    --config configs/amazon_book.yaml \
-    --mode train \
-    --seed 2026
-```
-
-Run experiments using multiple seeds:
-
-```bash
-for seed in 2022 2023 2024 2025 2026
-do
-    python main.py \
-        --config configs/amazon_book.yaml \
-        --mode train \
-        --seed ${seed}
-done
-```
-
-Please note that small numerical differences may occur due to hardware,
-CUDA, and PyTorch versions.
-
-## Pretrained Models
-
-Pretrained checkpoints will be released after the paper is accepted.
-
-Expected checkpoint organization:
-
-```text
-checkpoints/
-├── amazon_book/
-│   └── best_model.pt
-├── yelp/
-│   └── best_model.pt
-└── steam/
-    └── best_model.pt
-```
+- The default random seed is `42`; override it with `--seed`.
+- Dataset-specific settings are versioned in `rfsd/best_params.yaml`.
+- Use the same interaction splits and text embeddings when comparing results.
+- Enable validation-based early stopping with `--early-stop` when required.
 
 ## Citation
 
-If you find this work useful, please cite our paper:
-
-```bibtex
-@inproceedings{dong2026rfsd,
-  title     = {Robust Graph Recommendation via Relation Filtering and
-               Semantic Disentanglement},
-  author    = {Dong, Guoshuai and Zhang, Tingting and Wang, Minghui
-               and Li, Yu and Chang, Yi},
-  booktitle = {Proceedings of ...},
-  year      = {2026}
-}
-```
-
-The final conference name, page numbers, DOI, and publication information
-will be updated after publication.
-
-## Acknowledgements
-
-This implementation benefits from several open-source graph recommendation
-projects. We thank the authors and maintainers of these repositories.
-
-## Contact
-
-For questions about the code or paper, please contact:
-
-- Guoshuai Dong: `donggs24@mails.jlu.edu.cn`
-- Yu Li: `liyu90@jlu.edu.cn`
-
-You may also open a GitHub issue for code-related questions.
+Citation information will be added when the RFSD paper is publicly available.
